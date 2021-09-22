@@ -1,0 +1,85 @@
+stages:
+
+## Stage1: Validate
+
+- stage : validate
+  jobs:
+  - job: validate
+    continueOnError: false
+
+    steps:
+## Terraform tool
+    - task: TerraformInstaller@0
+      displayName: 'install'
+      inputs:
+        terraformVersion: '1.0.4'
+
+## Terraform init
+    - task: TerraformTaskV2@2
+      inputs:
+       provider: 'azurerm'
+       command: 'init'
+       commandOptions: '-reconfigure'
+       backendServiceArm: 'free_arm_devops'
+       backendAzureRmResourceGroupName: 'shivay'
+       backendAzureRmStorageAccountName: 'assignmentstoragesr1'
+       backendAzureRmContainerName: 'tf-backend'
+       backendAzureRmKey: 'terraform.tfstate'
+    
+
+## Terraform validate
+    - task: TerraformTaskV2@2
+      displayName: 'validate' 
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+        
+##stage 2: Deployment
+
+- stage: deploy
+  jobs:
+  - deployment: deploy_terraform
+    continueOnError: false
+    environment: 'dev'
+    strategy:
+     runOnce:
+       deploy:
+         steps:
+           - checkout: self
+
+## Terraform tool install
+           - task: TerraformInstaller@0
+             displayName: 'install'
+             inputs:
+               terraformVersion: '1.0.4'
+
+## Terrafrom initialize
+           - task: TerraformTaskV2@2
+             displayName: 'init'
+             inputs:
+               provider: 'azurerm'
+               command: 'init'
+               commandOptions: '-reconfigure'
+               backendServiceArm: 'free_arm_devops'
+               backendAzureRmResourceGroupName: 'shivay'
+               backendAzureRmStorageAccountName: 'assignmentstoragesr1'
+               backendAzureRmContainerName: 'tf-backend'
+               backendAzureRmKey: 'terraform.tfstate'
+
+## Terrafrom initialize
+           - task: TerraformTaskV2@2
+             displayName: 'plan'
+             inputs:
+               provider: 'azurerm'
+               command: 'plan'
+               commandOptions: '-var-file=prod.tfvars'
+               environmentServiceNameAzureRM: 'free_arm_devops'
+
+## Terrafrom apply
+           - task: TerraformTaskV2@2
+             displayName: 'apply'
+             inputs:
+               provider: 'azurerm'
+               command: 'apply'
+               commandOptions: '-var-file=prod.tfvars'
+               environmentServiceNameAzureRM: 'free_arm_devops'
